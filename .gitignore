@@ -1,0 +1,17 @@
+# Virtual Environment
+venv/
+.venv/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment Variables (PENTING jika Anda punya file .env)
+.env
+
+# Ide/Editor (Opsional)
+.vscode/
+.idea/
+
+models/training_args.bin
