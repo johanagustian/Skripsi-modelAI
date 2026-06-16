@@ -63,9 +63,9 @@ def generate_adaptive_question(difficulty: str, context: str, mode_kreatif: bool
     if mode_kreatif:
         gen_args = {
             "do_sample": True,
-            "top_k": 30,
-            "top_p": 0.90,
-            "temperature": 0.3,  
+            "top_k": 40,
+            "top_p": 0.85,
+            "temperature": 0.7,  
             "repetition_penalty": 2.5
         }
     else:
