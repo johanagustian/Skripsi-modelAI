@@ -1,3 +1,6 @@
+import random
+from unittest import result
+
 import torch
 from transformers import AutoTokenizer, T5ForConditionalGeneration
 
@@ -9,6 +12,8 @@ model = T5ForConditionalGeneration.from_pretrained(MODEL_PATH)
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model = model.to(device)
+if device == "cpu":
+    model = model.float()
 print(f"Model berhasil dimuat menggunakan: {device.upper()}")
 
 def parse_t5_output(raw_text):
@@ -38,25 +43,39 @@ def parse_t5_output(raw_text):
         if not correct_answer and len(options) > 0:
             correct_answer = options[0]
 
+        # Mengunci urutan asli bawaan model T5 ke variabel baru
+        default_options = list(options)
+
+        # Mengacak variabel 'options' asli menggunakan random.shuffle
+        if len(options) > 1:
+            random.shuffle(options)
+
+        # Variabel return tetap dipertahankan, hanya ditambahkan default_options
         return {
             "question_text": question_text,
-            "options": options,
+            "default_options": default_options,  # Cadangan opsi asli dari model
+            "options": options,                  # Opsi yang sudah teracak
             "correct_answer": correct_answer
         }
     except Exception as e:
+        fallback_options = ["A", "B", "C", "D"]
+        default_fallback = list(fallback_options)
+        random.shuffle(fallback_options)
         return {
             "question_text": raw_text,
-            "options": ["A", "B", "C", "D"],
+            "default_options": default_fallback,
+            "options": fallback_options,
             "correct_answer": "A"
         }
 
-def generate_adaptive_question(difficulty: str, context: str, mode_kreatif: bool = True):
+def generate_adaptive_question(difficulty: str, context: str, max_length: int = 128, mode_kreatif: bool = True):
     prompt = f"generate {difficulty} question: context: {context} "
 
     inputs = tokenizer(
         prompt,
         return_tensors="pt",
         truncation=True,
+        padding=True,
         max_length=512
     ).to(device)
 
@@ -64,9 +83,9 @@ def generate_adaptive_question(difficulty: str, context: str, mode_kreatif: bool
         gen_args = {
             "do_sample": True,
             "top_k": 40,
-            "top_p": 0.85,
-            "temperature": 0.7,  
-            "repetition_penalty": 2.5,
+            "top_p": 0.9,
+            "temperature": 0.3,  
+            "repetition_penalty": 1.5,
             "no_repeat_ngram_size": 3
         }
     else:
@@ -86,4 +105,19 @@ def generate_adaptive_question(difficulty: str, context: str, mode_kreatif: bool
         )
 
     result = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    print("\n" + "="*50)
+    print("[LOG MODEL T5] Teks Mentah dari Model:")
+    print(result)
+    print("="*50 + "\n")
     return parse_t5_output(result)
+    parsed_result = parse_t5_output(result)
+    print("\n" + "="*50)
+    print("[LOG MODEL T5] Teks Mentah dari Model:")
+    print(result)
+    print("="*50)
+    print("✨ --- [HASIL PEMPROSESAN SOAL] --- ✨")
+    print(f"Pertanyaan    : {parsed_result['question_text']}")
+    print(f"Kunci Jawaban : {parsed_result['correct_answer']}")
+    print("-" * 40)
+    print(f"Opsi Default (Bawaan T5) : {parsed_result['default_options']}")
+    print(f"Opsi Acak (Hasil Random) : {parsed_result['options']}")
